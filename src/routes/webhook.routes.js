@@ -1,0 +1,8 @@
+const router = require('express').Router();
+const express = require('express');
+const { handleStripeWebhook } = require('../controllers/webhook.controller');
+
+
+router.post('/stripe', express.raw({ type: 'application/json' }), handleStripeWebhook);
+
+module.exports = router;
