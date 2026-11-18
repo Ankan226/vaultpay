@@ -19,6 +19,12 @@ const getTransporter = () => {
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// "Nexus Corporate Services <me@gmail.com>"  ->  { name, email }
+const parseFrom = (from) => {
+  const m = String(from || '').match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1].trim() || 'Nexus Corporate Services', email: m[2].trim() } : { name: 'Nexus Corporate Services', email: String(from || '').trim() };
+};
+
 exports.sendReceiptEmail = async ({ to, name, invoice, pdfBuffer }) => {
   const total = (invoice.amountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 });
   const subject = `Payment received – Receipt for ${invoice.invoiceNumber}`;
@@ -29,6 +35,27 @@ exports.sendReceiptEmail = async ({ to, name, invoice, pdfBuffer }) => {
     <p>Thank you,<br/>Nexus Corporate Services</p>`;
   const filename = `Receipt-${invoice.invoiceNumber}.pdf`;
 
+  // 1) Brevo HTTPS API: sends to any recipient from a verified sender
+  if (process.env.BREVO_API_KEY) {
+    const sender = parseFrom(env.MAIL_FROM);
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to, name }],
+        subject,
+        htmlContent: html,
+        textContent: text,
+        attachment: [{ name: filename, content: pdfBuffer.toString('base64') }],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`);
+    return;
+  }
+
+  // 2) Resend HTTPS API (test sender only delivers to your own address)
   if (process.env.RESEND_API_KEY) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -47,7 +74,7 @@ exports.sendReceiptEmail = async ({ to, name, invoice, pdfBuffer }) => {
     return;
   }
 
-
+  // 3) SMTP fallback (fine locally)
   await getTransporter().sendMail({
     from: env.MAIL_FROM,
     to,
