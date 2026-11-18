@@ -5,7 +5,7 @@ Admins create invoices, clients log in and pay through Stripe Checkout, the serv
 
 | | |
 |---|---|
-| Live app | `<https://your-app.onrender.com>` |
+| Live app | `https://vaultpay-xlc6.onrender.com` |
 | GitHub | `https://github.com/Ankan226/vaultpay` |
 
 ---
@@ -118,7 +118,7 @@ All routes except login and the webhook require `Authorization: Bearer <token>`.
 ### 1. Install
 
 ```bash
-git clone https://github.com/your-username/vaultpay.git
+git clone https://github.com/Ankan226/vaultpay
 cd vaultpay
 npm install
 cp .env.example .env        
