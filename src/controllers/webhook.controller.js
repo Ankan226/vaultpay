@@ -40,13 +40,12 @@ async function fulfill(session) {
   const pdfBuffer = await buildInvoicePdf(updated, updated.client);
   console.log(`[webhook] ✔ PDF receipt generated (${pdfBuffer.length} bytes)`);
 
-  try {
-    await sendReceiptEmail({ to: updated.client.email, name: updated.client.name, invoice: updated, pdfBuffer });
-    await Invoice.updateOne({ _id: updated._id }, { emailSent: true });
-    console.log(`[webhook] ✔ Receipt emailed to ${updated.client.email}`);
-  } catch (err) {
-    console.error('[webhook] ✘ Email failed:', err.message);
-  }
+  sendReceiptEmail({ to: updated.client.email, name: updated.client.name, invoice: updated, pdfBuffer })
+    .then(async () => {
+      await Invoice.updateOne({ _id: updated._id }, { emailSent: true });
+      console.log(`[webhook] ✔ Receipt emailed to ${updated.client.email}`);
+    })
+    .catch((err) => console.error('[webhook] ✘ Email failed:', err.message));
 }
 
 
